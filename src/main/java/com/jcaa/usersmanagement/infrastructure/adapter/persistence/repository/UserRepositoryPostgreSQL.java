@@ -28,9 +28,9 @@ import java.util.Optional;
 
 @Slf4j
 @Repository
-@ConditionalOnProperty(name = "db.engine", havingValue = "postgresql")
+@ConditionalOnProperty(name = "db.engine", havingValue = "mysql", matchIfMissing = true)
 @RequiredArgsConstructor
-public class UserRepositoryMySQL
+public class UserRepositoryPostgreSQL
     implements SaveUserPort,
         UpdateUserPort,
         GetUserByIdPort,
