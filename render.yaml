@@ -37,4 +37,6 @@ services:
         generateValue: true
       - key: JWT_EXPIRATION_SECONDS
         value: "900"
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xmx350m -XX:MaxMetaspaceSize=128m"
         
