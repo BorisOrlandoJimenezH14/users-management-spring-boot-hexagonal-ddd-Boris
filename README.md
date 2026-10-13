@@ -13,6 +13,29 @@ Spring es el único *composition root*: `Main` inicia el contexto y las dependen
 
 En Windows se puede utilizar `mvnw.cmd`.
 
+## Secretos para desarrollo local
+
+Copiar `application-secrets.properties.example` como
+`.environments/application-secrets.properties` y reemplazar los valores de ejemplo.
+Este archivo contiene la conexion local a MySQL, la semilla JWT y las credenciales de
+Brevo. La carpeta `.environments` esta excluida de Git y del contexto de Docker.
+
+En produccion no se utiliza este archivo: los secretos deben configurarse mediante las
+variables de entorno `DB_*`, `JWT_SECRET` y `BREVO_*` del proveedor de despliegue.
+
+## Docker Compose local
+
+Copiar `compose.env.example` como `.env`, reemplazar todos los valores y ejecutar:
+
+```bash
+docker compose up --build
+```
+
+Compose se detiene con un error si falta `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`,
+`JWT_SECRET`, `BREVO_API_KEY` o `BREVO_FROM_ADDRESS`. El archivo `.env` esta excluido
+de Git y del contexto de construccion Docker. Los puertos de MySQL y la API se publican
+solo en `127.0.0.1`.
+
 ## Despliegue en Render
 
 El archivo `render.yaml` define el servicio web, el build con Docker y el despliegue
