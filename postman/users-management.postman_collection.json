@@ -1,0 +1,507 @@
+{
+  "info": {
+    "name": "Users Management API",
+    "description": "Coleccion de pruebas para la API de Gestion de Usuarios (Spring Boot + Arquitectura Hexagonal).\n\nIncluye:\n- Login del administrador creado en schema.sql y captura automatica del token JWT.\n- CRUD completo de usuarios: crear, listar, obtener por ID, actualizar y eliminar.\n- Casos negativos: credenciales invalidas, acceso sin token, recurso inexistente y email duplicado.\n\nOrden recomendado de ejecucion: usar el Collection Runner, que ejecuta las carpetas en orden (1, 2, 3).\n\nCredenciales por defecto del administrador (definidas en src/main/resources/schema.sql):\n  email: admin@example.com\n  password: Admin1234!",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin1234!",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userEmail",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticacion",
+      "description": "Obtiene el token JWT del administrador creado en schema.sql.",
+      "item": [
+        {
+          "name": "Login administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Devuelve un accessToken', function () {",
+                  "    pm.expect(body.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('tokenType es Bearer', function () {",
+                  "    pm.expect(body.tokenType).to.eql('Bearer');",
+                  "});",
+                  "",
+                  "pm.test('expiresIn es numerico y positivo', function () {",
+                  "    pm.expect(body.expiresIn).to.be.a('number').and.above(0);",
+                  "});",
+                  "",
+                  "// Se guarda el token a nivel de coleccion para que las demas peticiones lo hereden.",
+                  "pm.collectionVariables.set('token', body.accessToken);",
+                  "console.log('Token JWT del administrador guardado en la variable collection.token');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "POST /api/auth/login. Autentica al administrador y devuelve un token JWT que se guarda en la variable 'token'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. CRUD Usuarios",
+      "description": "Cada una de las operaciones del CRUD. Requiere haber ejecutado antes 'Login administrador'.",
+      "item": [
+        {
+          "name": "Crear usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Valores unicos por ejecucion para no chocar con usuarios ya existentes.",
+                  "const suffix = Math.random().toString(36).slice(2, 8);",
+                  "pm.collectionVariables.set('userId', 'usr-' + suffix);",
+                  "pm.collectionVariables.set('userEmail', 'test.' + suffix + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('id coincide con el enviado', function () {",
+                  "    pm.expect(body.id).to.eql(pm.collectionVariables.get('userId'));",
+                  "});",
+                  "",
+                  "pm.test('email coincide con el enviado', function () {",
+                  "    pm.expect(body.email).to.eql(pm.collectionVariables.get('userEmail'));",
+                  "});",
+                  "",
+                  "pm.test('role es MEMBER', function () {",
+                  "    pm.expect(body.role).to.eql('MEMBER');",
+                  "});",
+                  "",
+                  "pm.test('estado inicial es PENDING', function () {",
+                  "    pm.expect(body.status).to.eql('PENDING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{userId}}\",\n  \"name\": \"Usuario Pruebas\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"Test1234!\",\n  \"role\": \"MEMBER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/users",
+            "description": "POST /api/users. Crea un usuario. Genera id y email unicos y los guarda en las variables 'userId' y 'userEmail'."
+          }
+        },
+        {
+          "name": "Listar usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Devuelve un arreglo', function () {",
+                  "    pm.expect(body).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Incluye el usuario creado', function () {",
+                  "    const id = pm.collectionVariables.get('userId');",
+                  "    pm.expect(body.some(function (user) { return user.id === id; })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users",
+            "description": "GET /api/users. Requiere rol ADMIN o REVIEWER. Lista todos los usuarios."
+          }
+        },
+        {
+          "name": "Obtener usuario por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('id coincide con el creado', function () {",
+                  "    pm.expect(body.id).to.eql(pm.collectionVariables.get('userId'));",
+                  "});",
+                  "",
+                  "pm.test('email coincide con el creado', function () {",
+                  "    pm.expect(body.email).to.eql(pm.collectionVariables.get('userEmail'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "GET /api/users/{id}. Requiere rol ADMIN o REVIEWER."
+          }
+        },
+        {
+          "name": "Actualizar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('nombre actualizado', function () {",
+                  "    pm.expect(body.name).to.eql('Usuario Actualizado');",
+                  "});",
+                  "",
+                  "pm.test('estado ACTIVE', function () {",
+                  "    pm.expect(body.status).to.eql('ACTIVE');",
+                  "});",
+                  "",
+                  "pm.test('id coincide con el creado', function () {",
+                  "    pm.expect(body.id).to.eql(pm.collectionVariables.get('userId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Actualizado\",\n  \"email\": \"{{userEmail}}\",\n  \"role\": \"MEMBER\",\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "PUT /api/users/{id}. Requiere rol ADMIN. Si se omite 'password', se conserva la actual."
+          }
+        },
+        {
+          "name": "Eliminar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test('No devuelve cuerpo', function () {",
+                  "    pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "DELETE /api/users/{id}. Requiere rol ADMIN."
+          }
+        },
+        {
+          "name": "Verificar eliminacion (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('El cuerpo reporta 404', function () {",
+                  "    pm.expect(body.status).to.eql(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "GET /api/users/{id} hacia el usuario eliminado. Debe responder 404."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Casos negativos",
+      "description": "Validaciones de seguridad y manejo de errores. Independientes del CRUD.",
+      "item": [
+        {
+          "name": "Login con credenciales invalidas (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('El cuerpo reporta 401', function () {",
+                  "    pm.expect(body.status).to.eql(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"PasswordIncorrecta123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "POST /api/auth/login con password incorrecta. Debe responder 401."
+          }
+        },
+        {
+          "name": "Listar sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('El cuerpo reporta 401', function () {",
+                  "    pm.expect(body.status).to.eql(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users",
+            "description": "GET /api/users sin cabecera Authorization. Debe responder 401."
+          }
+        },
+        {
+          "name": "Obtener usuario inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('El cuerpo reporta 404', function () {",
+                  "    pm.expect(body.status).to.eql(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/usuario-inexistente-000",
+            "description": "GET /api/users/{id} con un id que no existe. Debe responder 404."
+          }
+        },
+        {
+          "name": "Crear usuario con email duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('El cuerpo reporta 409', function () {",
+                  "    pm.expect(body.status).to.eql(409);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"usr-duplicado-000\",\n  \"name\": \"Usuario Duplicado\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"Test1234!\",\n  \"role\": \"MEMBER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/users",
+            "description": "POST /api/users usando el email del administrador ya existente. Debe responder 409."
+          }
+        }
+      ]
+    }
+  ]
+}

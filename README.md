@@ -105,3 +105,41 @@ se configura con los mismos datos que exportas a Render:
   `Require`, en la extensión MySQL un toggle `SSL`). Si el editor pide el CA para
   TiDB Cloud Serverless, basta con permitir TLS sin verificar; o descarga el CA del
   clúster desde la consola si tu cliente exige `Verify CA`.
+
+## Pruebas con Postman
+
+La carpeta [`postman/`](postman) contiene una colección con pruebas para cada operación
+del CRUD y para la obtención del token del administrador:
+
+- `users-management.postman_collection.json`: peticiones y validaciones (`pm.test`).
+- `users-management-local.postman_environment.json`: entorno con `baseUrl` en
+  `http://localhost:8080`.
+- `users-management-render.postman_environment.json`: entorno para probar la API
+  desplegada en Render.
+
+Importar en Postman:
+
+1. **Import** → arrastra los archivos JSON de `postman/`.
+2. Selecciona el entorno **Users Management - Local** (desarrollo) o
+   **Users Management - Render** (API desplegada).
+3. Ejecuta **Run collection** (Collection Runner). El orden importa: *1. Autenticacion*
+   obtiene el token, luego el CRUD y por último los casos negativos.
+
+| Carpeta | Petición | Qué valida |
+| --- | --- | --- |
+| 1. Autenticación | Login administrador | Guarda el JWT del admin en la variable `token` |
+| 2. CRUD Usuarios | Crear usuario | `201` y estado inicial `PENDING` |
+| | Listar usuarios | `200` y que el usuario creado aparezca |
+| | Obtener usuario por ID | `200` con los datos del usuario |
+| | Actualizar usuario | `200` con nombre y estado `ACTIVE` |
+| | Eliminar usuario | `204` sin cuerpo |
+| | Verificar eliminación | `404` tras el borrado |
+| 3. Casos negativos | Login inválido | `401` |
+| | Listar sin token | `401` |
+| | Usuario inexistente | `404` |
+| | Email duplicado | `409` |
+
+El token se obtiene automáticamente del login del administrador definido en
+`schema.sql` (`admin@example.com` / `Admin1234!`); las peticiones del CRUD lo heredan
+mediante la autenticación Bearer a nivel de colección. Los entornos incluidos ya
+traen el `baseUrl` correcto para local y para la API desplegada.
