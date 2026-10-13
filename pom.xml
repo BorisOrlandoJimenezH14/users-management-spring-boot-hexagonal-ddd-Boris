@@ -71,7 +71,7 @@
       <artifactId>postgresql</artifactId>
       <scope>runtime</scope>
     </dependency>
-    <!-- JavaMail API (javax.mail legacy — NO migrado a jakarta.mail, intencional) -->
+    <!-- Resilience4j: reintentos y circuit breaker para el envío de correos (Brevo) -->
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>

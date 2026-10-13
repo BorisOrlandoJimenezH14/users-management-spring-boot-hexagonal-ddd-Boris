@@ -15,25 +15,60 @@ En Windows se puede utilizar `mvnw.cmd`.
 
 ## Secretos para desarrollo local
 
-Copiar `application-secrets.properties.example` como
-`.environments/application-secrets.properties` y reemplazar los valores de ejemplo.
-Este archivo contiene la conexion local a MySQL, la semilla JWT y las credenciales de
-Brevo. La carpeta `.environments` esta excluida de Git y del contexto de Docker.
+1. Copiar `.env.example` como `.env` en la raíz del proyecto y reemplazar los valores
+   de ejemplo: `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET`, `BREVO_API_KEY` y
+   `BREVO_FROM_ADDRESS`. Ese archivo lo leen tanto Docker Compose (`compose.yaml`) como
+   la aplicación (`spring.config.import` en `application.properties`).
 
-En produccion no se utiliza este archivo: los secretos deben configurarse mediante las
-variables de entorno `DB_*`, `JWT_SECRET` y `BREVO_*` del proveedor de despliegue.
+   Alternativa opcional: copiar `application-secrets.properties.example` como
+   `.environments/application-secrets.properties` con las mismas claves (estilo
+   `db.*`, `jwt.secret`, `brevo.local.*`). La app lo carga al arrancar si existe y sus
+   valores tienen prioridad sobre el `.env`. La carpeta `.environments` está excluida
+   de Git y del contexto de Docker.
+
+En producción no se utiliza ninguno de estos archivos: los secretos se configuran con
+las variables de entorno `DB_*`, `JWT_SECRET` y `BREVO_*` del proveedor de despliegue.
+
+## Build y run local
+
+Requisitos: Java 17, Maven (`mvnw`) y Docker (solo para levantar MySQL local).
+
+```bash
+# 1) Crear los secretos y completar los valores reales
+cp .env.example .env
+
+# 2) Levantar MySQL 8.4 en el puerto 3306
+docker compose up -d mysql
+
+# 3) Compilar (descarga dependencias y compila tests)
+./mvnw clean package
+
+# 4) Ejecutar la aplicación
+./mvnw spring-boot:run
+```
+
+Con la app corriendo:
+
+- Health / OpenAPI: `http://localhost:8080/v3/api-docs`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Login: `POST http://localhost:8080/api/auth/login` con el administrador creado por
+  `schema.sql` (`admin@example.com` / `Admin1234!`)
+- Colección de Postman con el entorno **Users Management - Local** (ver más abajo).
+
+En Windows se puede utilizar `mvnw.cmd`.
 
 ## Docker Compose local
 
-Copiar `compose.env.example` como `.env`, reemplazar todos los valores y ejecutar:
+Copiar `.env.example` como `.env` (o `compose.env.example` si solo quieres el archivo
+mínimo para Compose), reemplazar todos los valores y ejecutar:
 
 ```bash
 docker compose up --build
 ```
 
 Compose se detiene con un error si falta `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`,
-`JWT_SECRET`, `BREVO_API_KEY` o `BREVO_FROM_ADDRESS`. El archivo `.env` esta excluido
-de Git y del contexto de construccion Docker. Los puertos de MySQL y la API se publican
+`JWT_SECRET`, `BREVO_API_KEY` o `BREVO_FROM_ADDRESS`. El archivo `.env` está excluido
+de Git y del contexto de construcción Docker. Los puertos de MySQL y la API se publican
 solo en `127.0.0.1`.
 
 ## Despliegue en Render
@@ -45,8 +80,8 @@ TiDB, que habla el mismo protocolo MySQL.
 
 1. Crear un Blueprint en Render y seleccionar este repositorio.
 2. Completar en el panel los secretos solicitados: `DB_HOST`, `DB_PORT`, `DB_NAME`,
-   `DB_USERNAME`, `DB_PASSWORD`, `SMTP_USERNAME`, `SMTP_PASSWORD` y
-   `SMTP_FROM_ADDRESS`.
+   `DB_USERNAME`, `DB_PASSWORD`, `BREVO_API_KEY`, `BREVO_FROM_ADDRESS` y `JWT_SECRET`
+   (este último también se puede generar desde el dashboard).
 3. Asegurar que la base de datos sea accesible desde Internet y crear la tabla
    `users` ejecutando `src/main/resources/schema.sql` una vez.
 4. Desplegar el Blueprint. La API quedará disponible en el subdominio
