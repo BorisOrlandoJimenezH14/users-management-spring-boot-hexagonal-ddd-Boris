@@ -7,20 +7,26 @@ services:
     autoDeployTrigger: commit
     healthCheckPath: /v3/api-docs
     envVars:
+      # Motor MySQL. TiDB es compatible con el protocolo MySQL, asi que usa "mysql".
       - key: DB_ENGINE
-        value: postgresql
+        value: mysql
+      # TiDB Cloud: gateway01.<region>.prod.aws.tidbcloud.com
       - key: DB_HOST
         sync: false
+      # TiDB Cloud: 4000 | MySQL estandar: 3306
       - key: DB_PORT
-        value: "5432"
+        sync: false
+      # Nombre de la base de datos ya creada en TiDB
       - key: DB_NAME
-        value: postgres
+        sync: false
+      # TiDB Cloud: <prefijo>.root
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
         sync: false
+      # TiDB Cloud exige TLS. Para un MySQL local sin TLS usa DISABLED.
       - key: DB_SSL_MODE
-        value: require
+        value: REQUIRED
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
@@ -39,4 +45,3 @@ services:
         value: "900"
       - key: JAVA_TOOL_OPTIONS
         value: "-Xmx350m -XX:MaxMetaspaceSize=128m"
-        
