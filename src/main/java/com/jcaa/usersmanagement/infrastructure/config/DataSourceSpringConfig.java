@@ -13,9 +13,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 public class DataSourceSpringConfig {
 
-  private static final String PROP_DB_HOST     = "${db.host}";
-  private static final String PROP_DB_PORT     = "${db.port}";
-  private static final String PROP_DB_NAME     = "${db.name}";
+  private static final String PROP_DB_HOST = "${db.host}";
+  private static final String PROP_DB_PORT = "${db.port}";
+  private static final String PROP_DB_NAME = "${db.name}";
   private static final String PROP_DB_USERNAME = "${db.username}";
   private static final String PROP_DB_PASSWORD = "${db.password}";
   private static final String PROP_DB_SSL_MODE = "${db.ssl-mode}";
@@ -40,13 +40,18 @@ public class DataSourceSpringConfig {
   @Value(PROP_DB_SSL_MODE)
   private String dbSslMode;
 
+  @Value("${db.engine:mysql}")
+  private String dbEngine;
+
   @Bean
   public DataSource dataSource() {
-    final DatabaseConfig config =
-        new DatabaseConfig(dbHost, dbPort, dbName, dbUsername, dbPassword, dbSslMode);
+    final DatabaseConfig config = new DatabaseConfig(dbHost, dbPort, dbName, dbUsername, dbPassword, dbSslMode);
 
     final HikariConfig hikariConfig = new HikariConfig();
-    hikariConfig.setJdbcUrl(config.buildJdbcUrl());
+    hikariConfig.setJdbcUrl(
+        "postgresql".equalsIgnoreCase(dbEngine)
+            ? config.buildPostgreSqlJdbcUrl()
+            : config.buildJdbcUrl());
     hikariConfig.setUsername(config.username());
     hikariConfig.setPassword(config.password());
     hikariConfig.setMaximumPoolSize(10);
@@ -57,4 +62,3 @@ public class DataSourceSpringConfig {
     return new HikariDataSource(hikariConfig);
   }
 }
-

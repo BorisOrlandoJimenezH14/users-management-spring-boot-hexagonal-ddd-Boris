@@ -1,5 +1,6 @@
 package com.jcaa.usersmanagement.infrastructure.adapter.persistence.repository;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.jcaa.usersmanagement.application.port.out.DeleteUserPort;
 import com.jcaa.usersmanagement.application.port.out.GetAllUsersPort;
 import com.jcaa.usersmanagement.application.port.out.GetUserByEmailPort;
@@ -27,6 +28,7 @@ import java.util.Optional;
 
 @Slf4j
 @Repository
+@ConditionalOnProperty(name = "db.engine", havingValue = "postgresql")
 @RequiredArgsConstructor
 public class UserRepositoryMySQL
     implements SaveUserPort,

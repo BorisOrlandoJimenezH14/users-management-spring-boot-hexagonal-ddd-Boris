@@ -39,27 +39,69 @@ solo en `127.0.0.1`.
 ## Despliegue en Render
 
 El archivo `render.yaml` define el servicio web, el build con Docker y el despliegue
-automático de cada commit que llegue a la rama `main`.
+automático de cada commit que llegue a la rama `main`. La aplicación usa el motor
+MySQL (`DB_ENGINE=mysql`), por lo que funciona tanto con un MySQL propio como con
+TiDB, que habla el mismo protocolo MySQL.
 
 1. Crear un Blueprint en Render y seleccionar este repositorio.
-2. Completar en el panel los secretos marcados como requeridos: `DB_HOST`,
-   `DB_USERNAME`, `DB_PASSWORD`, `BREVO_API_KEY` y `BREVO_FROM_ADDRESS`.
-3. Usar una instancia MySQL accesible desde Internet o desde la red privada de
-   Render y ejecutar `src/main/resources/schema.sql` una vez para crear el esquema.
+2. Completar en el panel los secretos solicitados: `DB_HOST`, `DB_PORT`, `DB_NAME`,
+   `DB_USERNAME`, `DB_PASSWORD`, `SMTP_USERNAME`, `SMTP_PASSWORD` y
+   `SMTP_FROM_ADDRESS`.
+3. Asegurar que la base de datos sea accesible desde Internet y crear la tabla
+   `users` ejecutando `src/main/resources/schema.sql` una vez.
 4. Desplegar el Blueprint. La API quedará disponible en el subdominio
    `onrender.com` asignado por Render y Swagger UI en `/swagger-ui.html`.
 
 Las credenciales nunca deben guardarse en `application.properties` ni en
 `render.yaml`. Para desarrollo local, deben proporcionarse como variables de entorno.
 
-## Notificaciones por correo
+### Conexión con TiDB
 
-Los correos transaccionales se envian con `POST /v3/smtp/email` de Brevo. La llamada
-se ejecuta fuera del hilo HTTP en el executor `notificationExecutor` y dispone de
-timeouts, reintentos para errores de red/408/429/5xx con backoff exponencial, circuit
-breaker e idempotencia para evitar duplicados durante los reintentos.
+TiDB es compatible con MySQL, así que no hace falta cambiar código: solo las
+variables de entorno (y sincronizar el CA si se quiere validar el certificado).
 
-Variables requeridas: `BREVO_API_KEY` y `BREVO_FROM_ADDRESS`. El remitente debe estar
-verificado en Brevo. Los parametros de resiliencia `BREVO_CONNECT_TIMEOUT`,
-`BREVO_READ_TIMEOUT`, `BREVO_RETRY_*` y `BREVO_CIRCUIT_*` son opcionales y tienen
-valores predeterminados en `application.properties`.
+| Variable | Valor para TiDB Cloud Serverless |
+| --- | --- |
+| `DB_ENGINE` | `mysql` |
+| `DB_HOST` | `gateway01.<region>.prod.aws.tidbcloud.com` |
+| `DB_PORT` | `4000` |
+| `DB_NAME` | la base de datos que ya creaste |
+| `DB_USERNAME` | `<prefijo>.root` (el prefijo lo muestra la consola) |
+| `DB_PASSWORD` | la contraseña del clúster |
+| `DB_SSL_MODE` | `REQUIRED` |
+
+Pasos:
+
+1. En TiDB Cloud abre el clúster → **Connect** y copia el host, el puerto `4000`,
+   el usuario (`<prefijo>.root`) y la contraseña. Esos mismos datos los usas en
+   VS Code.
+2. En TiDB Cloud → **Networking / Allowed IP Addresses** agrega `0.0.0.0/0`. Los
+   servicios con plan gratuito de Render no tienen IP de salida fija, por lo que no
+   es posible permitir una IP concreta.
+3. Como la base de datos ya existe, ejecuta **solo** la creación de la tabla
+   (`CREATE TABLE users ...` y el `INSERT` del administrador de `schema.sql`)
+   dentro de tu base de datos. Omite `CREATE DATABASE` y `USE` (o ajusta el nombre
+   `crud_usuarios` por el tuyo).
+4. Carga las variables de la tabla en Render (blueprint o dashboard) y haz redeploy.
+
+Notas:
+
+- `DB_SSL_MODE=REQUIRED` cifra la conexión sin validar el nombre del certificado;
+  es lo recomendado para TiDB Cloud. Con `VERIFY_IDENTITY` habría que importar el
+  CA de TiDB al truststore del JRE del contenedor.
+- Para un MySQL local sin TLS usa `DB_SSL_MODE=DISABLED` y `DB_PORT=3306`.
+
+### Conexión desde VS Code
+
+La extensión de MySQL (por ejemplo **MySQL** de cweijan, o **SQLTools + MySQL/MariaDB**)
+se configura con los mismos datos que exportas a Render:
+
+- **Host**: `gateway01.<region>.prod.aws.tidbcloud.com`
+- **Port**: `4000`
+- **User**: `<prefijo>.root`
+- **Password**: la del clúster
+- **Database**: tu base de datos
+- **SSL/TLS**: activado (TiDB Cloud lo exige; en SQLTools suele ser
+  `Require`, en la extensión MySQL un toggle `SSL`). Si el editor pide el CA para
+  TiDB Cloud Serverless, basta con permitir TLS sin verificar; o descarga el CA del
+  clúster desde la consola si tu cliente exige `Verify CA`.
